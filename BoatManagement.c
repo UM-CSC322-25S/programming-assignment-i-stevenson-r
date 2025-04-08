@@ -1,11 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #define MAX_NAME_LENGTH 128
 #define MAX_BOAT_LENGTH 100   // Maximum allowed boat length in feet
 #define MAX_BOATS 120         // Maximum number of boats
+
 // Defining the NameString as a char array
 typedef char NameString[MAX_NAME_LENGTH];
+
 // Enum for the different types of boat places
 typedef enum {
     slip,
@@ -13,6 +16,7 @@ typedef enum {
     trailor, 
     storage
 } PlaceType;
+
 // Union for storing place-specific information
 typedef union {
     int SlipNumber;
@@ -20,6 +24,7 @@ typedef union {
     char TrailorLicenseTag[7];
     int StorageSpaceNumber;
 } PlaceExtra;
+
 // Boat structure definition
 typedef struct {
     NameString BoatName;
@@ -28,7 +33,9 @@ typedef struct {
     PlaceExtra PlaceInformation;
     double AmountOwed;
 } Boat;
+
 //--------------------------------------------------------------------------------------------------
+
 // Sort function for Bubble Sort algorithm
 void sortNames(Boat *boats[], int boatCount) {
     int Swapped = 1;
@@ -46,7 +53,9 @@ void sortNames(Boat *boats[], int boatCount) {
         }
     }
 }
+
 //--------------------------------------------------------------------------------------------------
+
 // Function to dynamically allocate memory
 void* Malloc(size_t Size) {
     void* Memory;
@@ -56,7 +65,9 @@ void* Malloc(size_t Size) {
     }
     return Memory;
 }
+
 //--------------------------------------------------------------------------------------------------
+
 int loadBoatFromCSVLine(Boat *newBoat, char *line) {
     // Buffers for place type and place-specific information
     char placeType[MAX_NAME_LENGTH];
@@ -152,7 +163,9 @@ int loadBoatsFromCSV(const char *filename, Boat **boats) {
     fclose(file);
     return boatCount;
 }
+
 //--------------------------------------------------------------------------------------------------
+
 // Function to save boat data to the CSV file
 void saveBoatsToCSV(const char *filename, Boat **boats, int boatCount) {
     FILE *file = fopen(filename, "w");
@@ -179,6 +192,7 @@ boats[i]->AmountOwed);
     sortNames(boats, boatCount);
     fclose(file);
 }
+
 //--------------------------------------------------------------------------------------------------
 
 void displayBoatInventory(Boat *boatList[], int boatCount) {
@@ -187,7 +201,7 @@ void displayBoatInventory(Boat *boatList[], int boatCount) {
         Boat *boat = boatList[i];
         
         // Print basic boat details
-        printf("%-20s %-6d %-8s ", boat->BoatName, boat->BoatLength,
+        printf("%-20s %-3d\' %-8s ", boat->BoatName, boat->BoatLength,
                (boat->TypeOfPlace == slip) ? "slip" :
                (boat->TypeOfPlace == land) ? "land" :
                (boat->TypeOfPlace == trailor) ? "trailor" :
@@ -203,257 +217,96 @@ void displayBoatInventory(Boat *boatList[], int boatCount) {
             printf("#%-7d ", boat->PlaceInformation.StorageSpaceNumber);  // Print storage space number
         }
         // Print the amount owed
-        printf("$%.2f\n", boat->AmountOwed);
+        printf("Owes $%6.2f\n", boat->AmountOwed);
     }
 }
+
 //--------------------------------------------------------------------------------------------------
-// Function to add a boat 
+
+// Function to parse and add boat details in CSV format
 void addBoat(Boat **boats, int *boatCount) {
     if (*boatCount >= MAX_BOATS) {
         printf("Cannot add more boats. Maximum capacity reached.\n");
         return;
     }
+
     Boat newBoat;
-    printf("Enter boat name: ");
-    scanf(" %127[^\n]", newBoat.BoatName);
-    printf("Enter boat length (in feet): ");
-    scanf("%d", &newBoat.BoatLength);
-    
-    // Check if the boat length exceeds the limit
-    if (newBoat.BoatLength > MAX_BOAT_LENGTH) {
-        printf("Boat length exceeds the maximum allowed length of %d feet.\n", MAX_BOAT_LENGTH);
-        return;
-    }
-    printf("Enter place type (slip, land, trailor, storage): ");
+    char csvLine[MAX_NAME_LENGTH * 4]; // Buffer to store the CSV string
     char placeType[MAX_NAME_LENGTH];
-    scanf(" %127[^\n]", placeType);
+    char placeSpecificDetails[MAX_NAME_LENGTH];
+
+    // Clear the buffer before waiting for user input
+    while (getchar() != '\n');  // This consumes any leftover newline character
+
+    // Prompt user to enter boat details in CSV format
+    printf("Enter boat details in CSV format (e.g., BoatName,BoatLength,PlaceType,PlaceSpecificDetails,AmountOwed):\n");
+    fgets(csvLine, sizeof(csvLine), stdin);
+    csvLine[strcspn(csvLine, "\n")] = '\0';  // Remove trailing newline
+
+    // Tokenize the CSV input
+    char *token = strtok(csvLine, ",");
+    
+    // Boat Name
+    if (token != NULL) {
+        strncpy(newBoat.BoatName, token, MAX_NAME_LENGTH - 1);
+        newBoat.BoatName[MAX_NAME_LENGTH - 1] = '\0';  // Ensure null termination
+    }
+
+    // Boat Length
+    token = strtok(NULL, ",");
+    if (token != NULL) {
+        newBoat.BoatLength = atoi(token);
+    }
+
+    // Place Type
+    token = strtok(NULL, ",");
+    if (token != NULL) {
+        strncpy(placeType, token, MAX_NAME_LENGTH - 1);
+        placeType[MAX_NAME_LENGTH - 1] = '\0';  // Ensure null termination
+    }
+
+    // Place Specific Details
+    token = strtok(NULL, ",");
+    if (token != NULL) {
+        strncpy(placeSpecificDetails, token, MAX_NAME_LENGTH - 1);
+        placeSpecificDetails[MAX_NAME_LENGTH - 1] = '\0';  // Ensure null termination
+    }
+
+    // Amount Owed
+    token = strtok(NULL, ",");
+    if (token != NULL) {
+        newBoat.AmountOwed = atof(token);
+    }
+
+    // Determine the place type and assign specific details
     if (strcmp(placeType, "slip") == 0) {
         newBoat.TypeOfPlace = slip;
-        printf("Enter slip number: ");
-        scanf("%d", &newBoat.PlaceInformation.SlipNumber);
+        newBoat.PlaceInformation.SlipNumber = atoi(placeSpecificDetails);
     } else if (strcmp(placeType, "land") == 0) {
         newBoat.TypeOfPlace = land;
-        printf("Enter bay letter: ");
-        scanf(" %c", &newBoat.PlaceInformation.BayLetter);
+        newBoat.PlaceInformation.BayLetter = placeSpecificDetails[0]; // Assuming single character
     } else if (strcmp(placeType, "trailor") == 0) {
         newBoat.TypeOfPlace = trailor;
-        printf("Enter trailor license tag: ");
-        scanf(" %6s", newBoat.PlaceInformation.TrailorLicenseTag);
+        strncpy(newBoat.PlaceInformation.TrailorLicenseTag, placeSpecificDetails, 6);
+        newBoat.PlaceInformation.TrailorLicenseTag[6] = '\0'; // Ensure null termination
     } else if (strcmp(placeType, "storage") == 0) {
         newBoat.TypeOfPlace = storage;
-        printf("Enter storage space number: ");
-        scanf("%d", &newBoat.PlaceInformation.StorageSpaceNumber);
+        newBoat.PlaceInformation.StorageSpaceNumber = atoi(placeSpecificDetails);
     } else {
         printf("Invalid place type.\n");
         return;
     }
-    printf("Enter amount owed: ");
-    scanf("%lf", &newBoat.AmountOwed);
-    boats[*boatCount] = Malloc(sizeof(Boat));
-    *boats[*boatCount] = newBoat;
+
+    // Store the new boat
+    boats[*boatCount] = (Boat *)malloc(sizeof(Boat));
+    *boats[*boatCount] = newBoat;  // Copy the new boat into the array
     (*boatCount)++;
+
     printf("Boat added successfully.\n");
 }
 
-/*
-void addBoat(Boat **boats, int *boatCount) {
-    if (*boatCount >= MAX_BOATS) {
-        printf("Cannot add more boats. Maximum capacity reached.\n");
-        return;
-    }
-    Boat newBoat;
-    printf("Please enter the boat data in CSV format : ");
-    scanf("%s[^,", line);
-        char placeType[MAX_NAME_LENGTH];
-    char remainingData[MAX_NAME_LENGTH];
-    sscanf(line, "%127[^,],%d", newBoat->BoatName, &newBoat->BoatLength);
-    char *remainingDataPtr = strchr(line, ',');
-    remainingDataPtr++;
-    remainingDataPtr = strchr(remainingDataPtr, ',');
-    remainingDataPtr++;
-    sscanf(remainingDataPtr, "%127[^,]", placeType);
-    if (strcmp(placeType, "slip") == 0) {
-        newBoat->TypeOfPlace = slip;
-        // Now parse the slip number after the place type
-        remainingDataPtr = strchr(remainingDataPtr, ',') + 1;  // Move to the next comma (skip place type)
-        sscanf(remainingDataPtr, "%d", &newBoat->PlaceInformation.SlipNumber);
-    } else if (strcmp(placeType, "land") == 0) {
-        newBoat->TypeOfPlace = land;
-        // Now parse the bay letter for land
-        remainingDataPtr = strchr(remainingDataPtr, ',') + 1;  // Move to the next comma (skip place type)
-        sscanf(remainingDataPtr, "%c", &newBoat->PlaceInformation.BayLetter) != 1) 
-        printf("Bay Letter: %c\n", newBoat->PlaceInformation.BayLetter);
-    } else if (strcmp(placeType, "trailor") == 0) {
-        newBoat->TypeOfPlace = trailor;
-        remainingDataPtr = strchr(remainingDataPtr, ',') + 1;  
-        sscanf(remainingDataPtr, "%6s", newBoat->PlaceInformation.TrailorLicenseTag);
-    } else if (strcmp(placeType, "storage") == 0) {
-        newBoat->TypeOfPlace = storage;
-        // Now parse the storage space number
-        remainingDataPtr = strchr(remainingDataPtr, ',') + 1;  // Move to the next comma (skip place type)
-        sscanf(remainingDataPtr, "%d", &newBoat->PlaceInformation.StorageSpaceNumber);
-    } else {
-        printf("Unknown place type: %s\n", placeType);
-    }
-    // After determining the place type and parsing the specific place information, parse the AmountOwed
-    remainingDataPtr = strchr(remainingDataPtr, ',') + 1;  // Move to the next comma (skip place information)
-    sscanf(remainingDataPtr, "%lf", &newBoat->AmountOwed);
-    //sscanf(line, "%127[^,],%d,%127[^,],%d,%lf", 
-                            newBoat->BoatName, 
-                            &newBoat->BoatLength, 
-                            placeType, 
-                            &newBoat->PlaceInformation.SlipNumber, 
-                            &newBoat->AmountOwed);
-
-    printf("Enter boat name: ");
-    scanf(" %127[^\n]", newBoat.BoatName);
-    printf("Enter boat length (in feet): ");
-    scanf("%d", &newBoat.BoatLength);
-    
-    if (newBoat.BoatLength > MAX_BOAT_LENGTH) {
-        printf("Boat length exceeds the maximum allowed length of %d feet.\n", MAX_BOAT_LENGTH);
-        return;
-    }
-    printf("Enter place type (slip, land, trailor, storage): ");
-    char placeType[MAX_NAME_LENGTH];
-    scanf(" %127[^\n]", placeType);
-    if (strcmp(placeType, "slip") == 0) {
-        newBoat.TypeOfPlace = slip;
-        printf("Enter slip number: ");
-        scanf("%d", &newBoat.PlaceInformation.SlipNumber);
-    } else if (strcmp(placeType, "land") == 0) {
-        newBoat.TypeOfPlace = land;
-        printf("Enter bay letter: ");
-        scanf(" %c", &newBoat.PlaceInformation.BayLetter);
-    } else if (strcmp(placeType, "trailor") == 0) {
-        newBoat.TypeOfPlace = trailor;
-        printf("Enter trailor license tag: ");
-        scanf(" %6s", newBoat.PlaceInformation.TrailorLicenseTag);
-    } else if (strcmp(placeType, "storage") == 0) {
-        newBoat.TypeOfPlace = storage;
-        printf("Enter storage space number: ");
-        scanf("%d", &newBoat.PlaceInformation.StorageSpaceNumber);
-    } else {
-        printf("Invalid place type.\n");
-        return;
-    }
-    printf("Enter amount owed: ");
-    scanf("%lf", &newBoat.AmountOwed);
-    boats[*boatCount] = Malloc(sizeof(Boat));
-    *boats[*boatCount] = newBoat;
-}
-*/
-/*
-// Function to add a boat by reading a CSV input string
-void addBoat(Boat **boats, int *boatCount) {
-    if (*boatCount >= MAX_BOATS) {
-        printf("Cannot add more boats. Maximum capacity reached.\n");
-        return;
-    }
-    // Prompt for the CSV input string (all fields in one line)
-    char inputLine[MAX_NAME_LENGTH + MAX_BOAT_LENGTH + 100]; // Max length for boat name, length, and place data
-    printf("Enter boat details in CSV format (BoatName,BoatLength,PlaceType,PlaceSpecificInfo,AmountOwed): ");
-    scanf(" %[^\n]", inputLine);  // Read the whole line as input
-    Boat newBoat;
-    char placeType[MAX_NAME_LENGTH];
-    int itemsRead = sscanf(inputLine, "%127[^,],%d,%127[^,],%127[^\n],%lf", 
-                            newBoat.BoatName, 
-                            &newBoat.BoatLength, 
-                            placeType, 
-                            placeType,  // place specific info
-                            &newBoat.AmountOwed);
-    
-    // Ensure boat length does not exceed the max allowed
-    if (newBoat.BoatLength > MAX_BOAT_LENGTH) {
-        printf("Boat length exceeds the maximum allowed length of %d feet.\n", MAX_BOAT_LENGTH);
-        return;
-    }
-    if (itemsRead == 5) {
-        // Handle the place type and specific info
-        if (strcmp(placeType, "slip") == 0) {
-            newBoat.TypeOfPlace = slip;
-            sscanf(placeType, "%d", &newBoat.PlaceInformation.SlipNumber);
-        } else if (strcmp(placeType, "land") == 0) {
-            newBoat.TypeOfPlace = land;
-            sscanf(placeType, "%c", &newBoat.PlaceInformation.BayLetter);
-        } else if (strcmp(placeType, "trailor") == 0) {  // Changed back to 'trailor'
-            newBoat.TypeOfPlace = trailor;
-            sscanf(placeType, "%s", newBoat.PlaceInformation.TrailorLicenseTag);  // 7 characters max
-        } else if (strcmp(placeType, "storage") == 0) {
-            newBoat.TypeOfPlace = storage;
-            sscanf(placeType, "%d", &newBoat.PlaceInformation.StorageSpaceNumber);
-        } else {
-            printf("Invalid place type.\n");
-            return;
-        }
-        // Add the new boat to the array
-        boats[*boatCount] = Malloc(sizeof(Boat));
-        *boats[*boatCount] = newBoat;
-        (*boatCount)++;
-        printf("Boat added successfully.\n");
-    } else {
-        printf("Invalid CSV format.\n");
-    }
-}
-// Function to add a boat by reading a CSV input string
-void addBoat(Boat **boats, int *boatCount) {
-    if (*boatCount >= MAX_BOATS) {
-        printf("Cannot add more boats. Maximum capacity reached.\n");
-        return;
-    }
-    // Prompt for the CSV input string (all fields in one line)
-    char inputLine[MAX_NAME_LENGTH + MAX_BOAT_LENGTH + 100]; // Max length for boat name, length, and place data
-    printf("Enter boat details in CSV format (BoatName,BoatLength,PlaceType,PlaceSpecificInfo,AmountOwed): ");
-    scanf(" %[^\n]", inputLine);  // Read the whole line as input
-    Boat newBoat;
-    char placeType[MAX_NAME_LENGTH];
-    char placeSpecificInfo[MAX_NAME_LENGTH]; // For place-specific info (like slip number, bay letter, etc.)
-    
-    // Parse the input string
-    int itemsRead = sscanf(inputLine, "%127[^,],%d,%127[^,],%127[^\n],%lf", 
-                            newBoat.BoatName, 
-                            &newBoat.BoatLength, 
-                            placeType, 
-                            placeSpecificInfo,  // place specific info
-                            &newBoat.AmountOwed);
-    // Ensure boat length does not exceed the max allowed
-    if (newBoat.BoatLength > MAX_BOAT_LENGTH) {
-        printf("Boat length exceeds the maximum allowed length of %d feet.\n", MAX_BOAT_LENGTH);
-        return;
-    }
-    if (itemsRead == 5) {
-        // Handle the place type and specific info
-        if (strcmp(placeType, "slip") == 0) {
-            newBoat.TypeOfPlace = slip;
-            sscanf(placeSpecificInfo, "%d", &newBoat.PlaceInformation.SlipNumber);
-        } else if (strcmp(placeType, "land") == 0) {
-            newBoat.TypeOfPlace = land;
-            sscanf(placeSpecificInfo, "%c", &newBoat.PlaceInformation.BayLetter);
-        } else if (strcmp(placeType, "trailor") == 0) {
-            newBoat.TypeOfPlace = trailor;
-            sscanf(placeSpecificInfo, "%s", newBoat.PlaceInformation.TrailorLicenseTag); // 7 characters max
-        } else if (strcmp(placeType, "storage") == 0) {
-            newBoat.TypeOfPlace = storage;
-            sscanf(placeSpecificInfo, "%d", &newBoat.PlaceInformation.StorageSpaceNumber);
-        } else {
-            printf("Invalid place type.\n");
-            return;
-        }
-        // Add the new boat to the array
-        boats[*boatCount] = malloc(sizeof(Boat));
-        if (boats[*boatCount] == NULL) {
-            printf("Memory allocation failed.\n");
-            return;
-        }
-        *boats[*boatCount] = newBoat;
-        (*boatCount)++;
-        printf("Boat added successfully.\n");
-    } else {
-        printf("Invalid CSV format.\n");
-    }
-}
-*/
 //--------------------------------------------------------------------------------------------------
+
 // Function to remove a boat by name
 void removeBoat(Boat **boats, int *boatCount) {
     char boatName[MAX_NAME_LENGTH];
@@ -478,7 +331,9 @@ void removeBoat(Boat **boats, int *boatCount) {
     (*boatCount)--;
     printf("Boat '%s' removed successfully.\n", boatName);
 }
+
 //--------------------------------------------------------------------------------------------------
+
 // Function to process payment
 void processPayment(Boat **boats, int boatCount) {
     char boatName[MAX_NAME_LENGTH];
@@ -489,6 +344,10 @@ void processPayment(Boat **boats, int boatCount) {
             double payment;
             printf("Enter payment amount: ");
             scanf("%lf", &payment);
+            if (payment > boats[i]->AmountOwed) {
+                printf("That is more than the amount owed, $%.2f\n", boats[i]->AmountOwed);
+                return;  // Exit the function if the payment exceeds the amount owed
+            }
             boats[i]->AmountOwed -= payment;
             if (boats[i]->AmountOwed < 0) {
                 boats[i]->AmountOwed = 0;
@@ -499,39 +358,40 @@ void processPayment(Boat **boats, int boatCount) {
     }
     printf("Boat with name '%s' not found.\n", boatName);
 }
+
 //--------------------------------------------------------------------------------------------------
+
 // Function for monthly updates
 void monthlyUpdate(Boat **boats, int boatCount) {
-   // double increasePercentage;
-   // printf("Enter the percentage increase in amount owed (e.g., 10 for 10%%): ");
-   // scanf("%lf", &increasePercentage);
    int i = 0;
      while( i < boatCount) {
+        double monthlyCharge = 0.0;
         switch (boats[i]->TypeOfPlace) {
            case slip:
-               boats[i]->AmountOwed += 12.50;
+               monthlyCharge = boats[i]->BoatLength * 12.50;
                break;
            case land:
-               boats[i]->AmountOwed += 14;
+               monthlyCharge = boats[i]->BoatLength * 14;
                break;
            case trailor:
-               boats[i]->AmountOwed += 25;
+               monthlyCharge = boats[i]->BoatLength * 25;
                break;
            case storage:
-               boats[i]->AmountOwed += 11.20;
+               monthlyCharge = boats[i]->BoatLength * 11.20;
                break;
            }
-    //    boats[i]->AmountOwed += boats[i]->AmountOwed * (increasePercentage / 100);
+    boats[i]->AmountOwed += monthlyCharge;
     i++;
     }
     
-   // printf("Monthly update applied. All amounts owed have been increased by %.2f%%.\n", increasePercentage);
 }
 
 //--------------------------------------------------------------------------------------------------
+
 // Main function
+
 int main(int argc, char *argv[]) {
-    if (argc != 2) {
+   if (argc != 2) {
         printf("Usage: %s <filename>\n", argv[0]);
         return EXIT_FAILURE;
     }
@@ -594,5 +454,6 @@ int main(int argc, char *argv[]) {
     }
     return EXIT_SUCCESS;
 }
+
 
 
